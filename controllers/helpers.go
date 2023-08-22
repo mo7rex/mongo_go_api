@@ -12,20 +12,22 @@ import (
 	"github.com/mo7rex/mongo_go_api/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func insertOneMovie(movie models.Netflix) {
+func insertOneMovie(movie models.Netflix) *mongo.InsertOneResult {
 	inserted, err := database.Collection.InsertOne(context.Background(), movie)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("the movie inserted in db with id: ", inserted.InsertedID)
+	return inserted
 }
 func makeAsWatched(movieId string) {
 	id, _ := primitive.ObjectIDFromHex(movieId) //creates a new ObjectID
 	filter := bson.M{"_id": id}
-	update := bson.M{"$Set": bson.M{"watched": true}}
+	update := bson.M{"$set": bson.M{"watched": true}}
 	result, err := database.Collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		log.Fatal(err)
@@ -35,7 +37,7 @@ func makeAsWatched(movieId string) {
 func updateMovie(movieId string, upMovie models.Netflix) {
 	id, _ := primitive.ObjectIDFromHex(movieId) //creates a new ObjectID
 	filter := bson.M{"_id": id}
-	update := bson.M{"$Set": upMovie}
+	update := bson.M{"$set": upMovie}
 	result, err := database.Collection.UpdateOne(context.Background(), filter, update)
 	if err != nil {
 		log.Fatal(err)
@@ -120,7 +122,9 @@ func CreateMovie(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow-Control-Allow-Methods", "POST")
 	var movie models.Netflix
 	_ = json.NewDecoder(r.Body).Decode(&movie)
-	insertOneMovie(movie)
+
+	movDet := insertOneMovie(movie)
+	json.NewEncoder(w).Encode(movDet)
 	json.NewEncoder(w).Encode(movie)
 
 }
@@ -136,6 +140,7 @@ func UpdateOne(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow-Control-Allow-Methods", "PUT")
 	params := mux.Vars(r)
 	var movie models.Netflix
+	_ = json.NewDecoder(r.Body).Decode(&movie)
 	updateMovie(params["id"], movie)
 	json.NewEncoder(w).Encode(params["id"])
 }
